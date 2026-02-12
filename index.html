@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>超级李等等 - 逆水寒帮战人力调度系统</title>
+    <link rel="stylesheet" href="styles.css">
+           <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+           <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 顶部工具栏 -->
+        <header class="toolbar">
+            <h1 class="app-title">🎮 超级李等等</h1>
+            <div class="toolbar-buttons">
+                <button class="btn btn-primary" id="btnImport">
+                    <span class="icon">📥</span> 导入数据
+                </button>
+                <button class="btn btn-success" id="btnAddTeam">
+                    <span class="icon">➕</span> <span id="btnAddTeamText">创建团队</span>
+                </button>
+                    <button class="btn btn-warning" id="btnAllocate">
+                        <span class="icon">🎯</span> 智能分配
+                    </button>
+                    <button class="btn btn-secondary" id="btnHistory">
+                        <span class="icon">📋</span> 导入历史
+                    </button>
+            </div>
+        </header>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 顶部：团队标签页 -->
+            <section class="teams-tabs-container">
+                <div class="teams-tabs-header">
+                    <div class="teams-tabs-list" id="teamsTabsList">
+                        <!-- 团队标签将动态插入这里 -->
+                    </div>
+                    <button class="btn-add-team-tab" id="btnAddTeamTab" title="添加团队">
+                        <span>➕</span>
+                    </button>
+                    <span class="team-count" id="teamCount">0/5</span>
+                </div>
+                <div class="teams-tabs-content" id="teamsTabsContent">
+                    <!-- 团队详情内容将动态插入这里 -->
+                </div>
+            </section>
+
+            <!-- 右侧：成员池 -->
+            <section class="panel panel-members">
+                <div class="panel-header">
+                    <h2>成员池</h2>
+                    <span class="member-count" id="memberCount">0</span>
+                </div>
+                <div class="members-filters">
+                    <input type="text" id="memberSearchInput" class="member-search-input" placeholder="🔍 搜索成员姓名...">
+                    <select id="memberClassFilter" class="member-class-filter">
+                        <option value="">全部职业</option>
+                    </select>
+                    <button class="btn btn-secondary btn-sort" id="btnSortByPower" title="按战力排序">📊 战力</button>
+                </div>
+                <div class="panel-body" id="membersPool">
+                    <!-- 成员卡片将动态插入这里 -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- 文件输入（隐藏） -->
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display: none;" multiple>
+    <input type="file" id="fileInputBattle" accept=".xlsx,.xls,.csv" style="display: none;" multiple>
+    
+    <!-- 导入类型选择对话框 -->
+    <div class="modal" id="importTypeModal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>选择导入类型</h3>
+                <button class="modal-close" id="importTypeClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px;">请选择要导入的数据类型：</p>
+                <button class="btn btn-primary" id="btnImportMembers" style="width: 100%; margin-bottom: 10px; padding: 15px;">
+                    <div style="font-size: 18px; margin-bottom: 5px;">👥 成员数据</div>
+                    <div style="font-size: 12px; opacity: 0.9;">导入成员信息（单文件）</div>
+                </button>
+                <button class="btn btn-info" id="btnImportBattle" style="width: 100%; padding: 15px;">
+                    <div style="font-size: 18px; margin-bottom: 5px;">⚔️ 帮战数据</div>
+                    <div style="font-size: 12px; opacity: 0.9;">导入帮战数据（支持批量导入）</div>
+                </button>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btnCancelImport">取消</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 帮会选择对话框 -->
+    <div class="modal" id="guildSelectModal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>选择帮会</h3>
+                <button class="modal-close" id="guildSelectClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px;">检测到多个帮会数据，请选择要导入的帮会：</p>
+                <div id="guildSelectList" style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- 帮会选项将动态插入这里 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btnCancelGuildSelect">取消</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 导入历史对话框 -->
+    <div class="modal" id="importHistoryModal">
+        <div class="modal-content" style="max-width: 800px; max-height: 90vh;">
+            <div class="modal-header">
+                <h3>📋 导入历史记录</h3>
+                <button class="modal-close" id="historyModalClose">&times;</button>
+            </div>
+            <div class="modal-body" style="max-height: calc(90vh - 150px); overflow-y: auto;">
+                <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+                    <span id="historyCount" style="color: var(--text-secondary); font-size: 14px;">共 0 条记录</span>
+                    <button class="btn btn-danger btn-sm" id="btnClearHistory" style="padding: 6px 12px; font-size: 12px;">
+                        🗑️ 清空历史
+                    </button>
+                </div>
+                <div id="importHistoryList">
+                    <!-- 历史记录将动态插入这里 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btnCloseHistory">关闭</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 帮战数据查看对话框 -->
+    <div class="modal" id="battleDataModal">
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh;">
+            <div class="modal-header">
+                <h3 id="battleDataTitle">帮战数据</h3>
+                <button class="modal-close" id="battleDataClose">&times;</button>
+            </div>
+            <div class="modal-body" style="max-height: calc(90vh - 150px); overflow-y: auto;">
+                <div id="battleDataContent">
+                    <!-- 帮战数据将动态插入这里 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btnCloseBattleData">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 团队编辑对话框 -->
+    <div class="modal" id="teamEditModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">添加团队</h3>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>团队名称：</label>
+                    <input type="text" id="teamNameInput" class="form-control" placeholder="输入团队名称">
+                </div>
+                <div class="form-group">
+                    <label>人数上限：</label>
+                    <input type="number" id="maxMembersInput" class="form-control" min="1" max="50" value="30">
+                </div>
+                <div class="form-group">
+                    <label>职责模板：</label>
+                    <select id="templateSelect" class="form-control">
+                        <option value="">(无模板)</option>
+                    </select>
+                </div>
+                <div class="template-detail" id="templateDetail"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="btnSaveTeam">确定</button>
+                <button class="btn btn-secondary" id="btnCancelTeam">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 成员标记对话框 -->
+    <div class="modal" id="memberTagModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>标记成员</h3>
+                <button class="modal-close" id="tagModalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="member-info" id="memberInfo"></div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="chkLeader">
+                        <span>👑 团长（每团1人）</span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="chkEye">
+                        <span>👁️ 眼位（全局1-4人，不占团名额）</span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="chkExpert">
+                        <span>🎮 高手（优先分配高压力团）</span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="chkDataGood">
+                        <span>📊 数据好（优先分配高压力团）</span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="chkLocked">
+                        <span>🔒 锁定位置（防止被算法重分）</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="btnSaveTag">确定</button>
+                <button class="btn btn-secondary" id="btnCancelTag">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 智能分配设置对话框 -->
+    <div class="modal" id="allocateSettingsModal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>智能分配设置</h3>
+                <button class="modal-close" id="allocateSettingsClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>团队人数上限：</label>
+                    <input type="number" id="allocateMaxMembers" class="form-control" min="1" max="50" value="30">
+                </div>
+                <div class="form-group">
+                    <label>素问职业数量：</label>
+                    <input type="number" id="allocateSuwenCount" class="form-control" min="0" max="20" value="6">
+                    <small style="color: var(--text-secondary); font-size: 12px;">优先为近战职业多的队伍配置素问</small>
+                </div>
+                <div class="form-group">
+                    <label>选择团长：</label>
+                    <input type="text" id="allocateLeaderSearch" class="form-control" placeholder="🔍 搜索成员姓名或职业..." list="allocateLeaderOptions" autocomplete="off">
+                    <datalist id="allocateLeaderOptions">
+                        <!-- 成员选项将动态加载 -->
+                    </datalist>
+                    <input type="hidden" id="allocateLeaderSelect" value="">
+                    <small style="color: var(--text-secondary); font-size: 12px;">团长将放在1队1号位（可输入姓名或职业搜索）</small>
+                </div>
+                <div class="form-group">
+                    <label>分配策略：</label>
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+                        <label class="checkbox-label" style="cursor: pointer; padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius);">
+                            <input type="radio" name="allocateStrategy" value="melee" checked style="margin-right: 10px;">
+                            <span><strong>来点近战</strong> (70%近战 30%远程)</span>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">
+                                近战：沧澜、血河、铁衣、龙吟、碎梦、荒羽
+                            </div>
+                        </label>
+                        <label class="checkbox-label" style="cursor: pointer; padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius);">
+                            <input type="radio" name="allocateStrategy" value="ranged" style="margin-right: 10px;">
+                            <span><strong>来点远程</strong> (30%近战 70%远程)</span>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">
+                                远程：神相、鸿音、九灵、云瑶、潮光、玄机
+                            </div>
+                        </label>
+                        <label class="checkbox-label" style="cursor: pointer; padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius);">
+                            <input type="radio" name="allocateStrategy" value="balanced" style="margin-right: 10px;">
+                            <span><strong>平衡分配</strong> (50%近战 50%远程)</span>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">
+                                近战与远程职业各占一半
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btnCancelAllocateSettings">取消</button>
+                <button class="btn btn-primary" id="btnConfirmAllocate">开始分配</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建团队选择对话框 -->
+    <div class="modal" id="createTeamModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>创建团队</h3>
+                <button class="modal-close" id="createTeamModalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 20px; color: var(--text-secondary);">请选择创建方式：</p>
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    <button class="btn btn-primary" id="btnCreate4Teams" style="width: 100%; padding: 15px; font-size: 16px; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+                        <span>
+                            <strong>4团模式</strong>
+                            <div style="font-size: 12px; margin-top: 5px; opacity: 0.8;">主攻、辅攻、防守、机动</div>
+                        </span>
+                        <span>→</span>
+                    </button>
+                    <button class="btn btn-primary" id="btnCreate5Teams" style="width: 100%; padding: 15px; font-size: 16px; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+                        <span>
+                            <strong>5团模式</strong>
+                            <div style="font-size: 12px; margin-top: 5px; opacity: 0.8;">进攻、中路、机动、防守、打野</div>
+                        </span>
+                        <span>→</span>
+                    </button>
+                    <button class="btn btn-secondary" id="btnCreateCustom" style="width: 100%; padding: 15px; font-size: 16px; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+                        <span>
+                            <strong>自定义</strong>
+                            <div style="font-size: 12px; margin-top: 5px; opacity: 0.8;">创建一个自定义团队</div>
+                        </span>
+                        <span>→</span>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btnCancelCreateTeam">取消</button>
+            </div>
+        </div>
+    </div>
+
+           <!-- 导出选项对话框 -->
+           <div class="modal" id="exportOptionsModal">
+               <div class="modal-content" style="max-width: 450px;">
+                   <div class="modal-header">
+                       <h3>导出配比并保存</h3>
+                       <button class="modal-close" id="exportOptionsClose">&times;</button>
+                   </div>
+                   <div class="modal-body">
+                       <p style="margin-bottom: 15px; color: var(--text-secondary);">请选择导出范围：</p>
+                       <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+                           <label style="display: flex; align-items: center; gap: 10px; padding: 10px; border: 2px solid var(--border-color); border-radius: 6px; cursor: pointer; transition: var(--transition);">
+                               <input type="radio" name="exportScope" value="current" checked style="cursor: pointer;">
+                               <span style="flex: 1;">
+                                   <strong>📋 导出当前团</strong>
+                                   <div style="font-size: 12px; margin-top: 3px; opacity: 0.8;">仅导出当前选中的团队</div>
+                               </span>
+                           </label>
+                           <label style="display: flex; align-items: center; gap: 10px; padding: 10px; border: 2px solid var(--border-color); border-radius: 6px; cursor: pointer; transition: var(--transition);">
+                               <input type="radio" name="exportScope" value="all" style="cursor: pointer;">
+                               <span style="flex: 1;">
+                                   <strong>📚 导出全部团</strong>
+                                   <div style="font-size: 12px; margin-top: 3px; opacity: 0.8;">导出所有已创建的团队</div>
+                               </span>
+                           </label>
+                       </div>
+                       <p style="margin-bottom: 15px; color: var(--text-secondary);">请选择导出方式：</p>
+                       <div style="display: flex; flex-direction: column; gap: 10px;">
+                           <button class="btn btn-primary" id="btnExportImage" style="width: 100%; padding: 15px; font-size: 16px; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+                               <span>
+                                   <strong>📥 下载图片</strong>
+                                   <div style="font-size: 12px; margin-top: 5px; opacity: 0.8;">导出为PNG图片文件</div>
+                               </span>
+                               <span>→</span>
+                           </button>
+                           <button class="btn btn-success" id="btnCopyText" style="width: 100%; padding: 15px; font-size: 16px; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+                               <span>
+                                   <strong>📋 复制文本到微信</strong>
+                                   <div style="font-size: 12px; margin-top: 5px; opacity: 0.8;">复制文本内容到剪贴板</div>
+                               </span>
+                               <span>→</span>
+                           </button>
+                       </div>
+                   </div>
+                   <div class="modal-footer">
+                       <button class="btn btn-secondary" id="btnCancelExport">取消</button>
+                   </div>
+               </div>
+           </div>
+           
+           <!-- 历史配比对话框 -->
+           <div class="modal" id="historyTeamsModal">
+               <div class="modal-content" style="max-width: 600px; max-height: 80vh;">
+                   <div class="modal-header">
+                       <h3>📚 历史配比</h3>
+                       <button class="modal-close" id="historyTeamsClose">&times;</button>
+                   </div>
+                   <div class="modal-body" id="historyTeamsContent" style="overflow-y: auto; max-height: 60vh;">
+                       <!-- 历史配比列表将动态插入这里 -->
+                   </div>
+                   <div class="modal-footer">
+                       <button class="btn btn-danger" id="btnClearHistoryTeams">清空历史</button>
+                       <button class="btn btn-secondary" id="btnCancelHistoryTeams">关闭</button>
+                   </div>
+               </div>
+           </div>
+
+           <!-- 加载脚本 -->
+           <script src="models.js"></script>
+           <script src="services.js"></script>
+           <script src="app.js"></script>
+       </body>
+       </html>
+
