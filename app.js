@@ -3559,9 +3559,8 @@ class App {
                 text += `【${i}小队】\n`;
                 squadMembers.sort((a, b) => (a.slotIndex || 999) - (b.slotIndex || 999));
                 squadMembers.forEach((member, idx) => {
-                    const slot = member.slotIndex || idx + 1;
                     const tags = member.getTagsDisplay();
-                    text += `${slot}号位：${member.name}（${member.class}）${tags ? tags : ''} ${(member.power / 10000).toFixed(1)}w\n`;
+                    text += `${member.name}（${member.class}）${tags ? tags : ''} ${(member.power / 10000).toFixed(1)}w\n`;
                 });
                 text += '\n';
             }
@@ -3618,7 +3617,7 @@ class App {
                     line-height: 1.5;
                 }
             </style>
-            <div style="border: 2px solid #333; border-radius: 8px; padding: 20px;">
+            <div style="border: 2px solid #333; border-radius: 8px; padding: 20px; position: relative;">
                 <h2 style="margin: 0 0 15px 0; color: #333; font-size: 24px;">${team.name}</h2>
                 <div style="margin-bottom: 20px; padding: 15px; background: #f0f7ff; border-radius: 6px;">
                     <div style="font-size: 16px; margin-bottom: 8px;"><strong>总人数：</strong>${team.currentCount}/${team.maxMembers}</div>
@@ -3646,13 +3645,14 @@ class App {
                     const textColor = member.class === '素问' || member.class === '鸿音' ? '#8b4c6b' : 'white';
                     html += `
                         <div class="export-member-card" style="background: ${memberColor}; color: ${textColor};">
-                            <strong>${slot}号位：</strong>${member.name}（${member.class}）${tags ? tags : ''} ${(member.power / 10000).toFixed(1)}w
+                            <div style="font-weight: 600;">${member.name}${tags ? ' ' + tags : ''}</div>
+                            <div style="font-size: 12px; opacity: 0.9;">${member.class} ${(member.power / 10000).toFixed(1)}w</div>
                         </div>
                     `;
                 } else {
                     html += `
                         <div style="margin-bottom: 5px; padding: 8px 10px; background: #f5f5f5; border-radius: 4px; color: #999; font-size: 14px;">
-                            <strong>${slot}号位：</strong>空
+                            空
                         </div>
                     `;
                 }
@@ -3665,6 +3665,9 @@ class App {
         }
         
         html += `
+                </div>
+                <div style="position: absolute; bottom: 10px; right: 20px; font-size: 24px; opacity: 0.7;">
+                    🍑
                 </div>
             </div>
         `;
