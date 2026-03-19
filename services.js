@@ -1633,5 +1633,65 @@ class Persistence {
             return [];
         }
     }
+
+    // 保存团队配比历史
+    static saveTeamHistory(teamData) {
+        try {
+            const history = this.getTeamHistory();
+            const record = {
+                id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                timestamp: new Date().toISOString(),
+                name: teamData.name || '未命名配比',
+                data: teamData
+            };
+            history.unshift(record);
+            // 只保留最近20条记录
+            if (history.length > 20) {
+                history.splice(20);
+            }
+            localStorage.setItem(this.STORAGE_KEY_TEAM_HISTORY, JSON.stringify(history));
+            return record.id;
+        } catch (error) {
+            console.error('保存团队配比历史失败:', error);
+            return null;
+        }
+    }
+    
+    // 获取团队配比历史
+    static getTeamHistory() {
+        try {
+            const data = localStorage.getItem(this.STORAGE_KEY_TEAM_HISTORY);
+            if (!data) return [];
+            const history = JSON.parse(data);
+            return Array.isArray(history) ? history : [];
+        } catch (error) {
+            console.error('获取团队配比历史失败:', error);
+            return [];
+        }
+    }
+    
+    // 删除团队配比历史
+    static deleteTeamHistory(historyId) {
+        try {
+            const history = this.getTeamHistory();
+            const filtered = history.filter(r => String(r.id) !== String(historyId));
+            localStorage.setItem(this.STORAGE_KEY_TEAM_HISTORY, JSON.stringify(filtered));
+            return true;
+        } catch (error) {
+            console.error('删除团队配比历史失败:', error);
+            return false;
+        }
+    }
+    
+    // 清空团队配比历史
+    static clearTeamHistory() {
+        try {
+            localStorage.removeItem(this.STORAGE_KEY_TEAM_HISTORY);
+            return true;
+        } catch (error) {
+            console.error('清空团队配比历史失败:', error);
+            return false;
+        }
+    }  
 }
 
